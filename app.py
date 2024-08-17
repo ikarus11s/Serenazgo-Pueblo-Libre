@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Aug 17 12:12:18 2024
+
+@author: radio
+"""
+
 import networkx as nx
 import osmnx as ox
 import gspread
@@ -7,6 +14,8 @@ import numpy as np
 from random import choice
 import time
 from datetime import datetime
+import folium
+
 from flask import Flask, render_template, jsonify
 import threading
 from scipy.spatial.distance import cdist
@@ -18,6 +27,11 @@ from Utils.MisLibrerias import *
 SCOPES = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 SPREADSHEET_ID = '1gS6ZS6lS7Mc5B4TFI8HEK80xq4LANS6nU2O8V8-hEC8'
 
+# Cargar las credenciales desde la variable de entorno
+creds_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+creds_dict = json.loads(creds_json)
+creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+
 # Inicializa la aplicación Flask
 app = Flask(__name__)
 
@@ -25,10 +39,6 @@ app = Flask(__name__)
 serenos_positions = []
 victimas_positions = []
 
-# Cargar las credenciales desde la variable de entorno
-creds_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')
-creds_dict = json.loads(creds_json)
-creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 
 def read_data(sheet_name):
     sheet = authenticate_google_sheets(sheet_name)
@@ -39,11 +49,36 @@ def read_data(sheet_name):
     df = pd.DataFrame(data)
     return df
 
+
+def download_graph(place):
+    """
+    Descarga el grafo para el lugar especificado utilizando OSMnx.
+    
+    :param place: Nombre del lugar para el cual descargar el grafo
+    :return: Grafo de NetworkX
+    """
+    G = ox.graph_from_place(place, network_type="drive")
+    return G
+
+
 def extract_nodes(graph):
     nodes_data = [(node, data['y'], data['x'], data['street_count'], data['Cluster'], data['Criminalidad']) 
                   for node, data in graph.nodes(data=True)]
     nodes_df = pd.DataFrame(nodes_data, columns=['id', 'lat', 'lon', 'street_count', 'Cluster', 'Criminalidad'])
     return nodes_df
+
+
+def select_random_nodes(nodes, n):
+    """
+    Selecciona n nodos al azar de los nodos disponibles.
+    
+    :param nodes: DataFrame con todos los nodos
+    :param n: Número de nodos a seleccionar
+    :return: DataFrame con los nodos seleccionados
+    """
+    return nodes.sample(n=n).reset_index(drop=True)
+
+
 
 def select_sereno_positions(data_serenos):
     required_columns = ['Sereno', 'Cluster', 'id', 'lat', 'lon', 'Estado']
@@ -56,10 +91,23 @@ def select_sereno_positions(data_serenos):
 def authenticate_google_sheets(sheet_name=None):
     client = gspread.authorize(creds)
     spreadsheet = client.open_by_key(SPREADSHEET_ID)
-    return spreadsheet.worksheet(sheet_name) if sheet_name else spreadsheet.sheet1
+    if sheet_name:
+        sheet = spreadsheet.worksheet(sheet_name)
+    else:
+        sheet = spreadsheet.sheet1
+    
+    return sheet
 
 def get_serenos_count(sheet):
-    return len(sheet.get_all_records())
+    """
+    Obtiene el número de serenos desde la hoja de cálculo.
+    
+    :param sheet: Objeto de hoja de Google Sheets
+    :return: Número de serenos (filas con datos)
+    """
+    data = sheet.get_all_records()
+    return len(data)
+
 
 def update_google_sheet(sheet, data_frame):
     updated_data = data_frame[['lat', 'lon', 'Estado']].values.tolist()
@@ -90,16 +138,34 @@ def simulate_sereno_movement(nodes, serenos, graph):
     for i in range(len(serenos)):
         if serenos.iloc[i]['Estado'] == 'NORMAL':
             current_node_id = serenos.iloc[i]['id']
-            current_cluster = str(serenos.iloc[i]['Cluster'])
+            current_cluster = serenos.iloc[i]['Cluster']
+            
+            # Convertir el cluster a string para asegurar comparación correcta
+            current_cluster = str(current_cluster)
+            
+            # Obtener todos los vecinos
             all_neighbors = list(graph.neighbors(current_node_id))
             
             if current_cluster == '-1':
+                # Para serenos con cluster -1, implementar el recorrido del agente viajero maximizando criminalidad
                 criminalidad_neighbors = [(node, graph.nodes[node]['Criminalidad']) for node in all_neighbors]
-                criminalidad_neighbors.sort(key=lambda x: x[1], reverse=True)
-                new_node = criminalidad_neighbors[0][0] if criminalidad_neighbors else current_node_id
+                criminalidad_neighbors.sort(key=lambda x: x[1], reverse=True)  # Ordenar por criminalidad descendente
+                
+                if criminalidad_neighbors:
+                    new_node = criminalidad_neighbors[0][0]  # Seleccionar el nodo con mayor criminalidad
+                else:
+                    new_node = current_node_id  # Si no hay vecinos, quedarse en el mismo lugar
             else:
-                same_cluster_neighbors = [node for node in all_neighbors if str(graph.nodes[node]['Cluster']) == current_cluster]
-                new_node = choice(same_cluster_neighbors) if same_cluster_neighbors else (choice(all_neighbors) if all_neighbors else current_node_id)
+                # Para otros clusters, mantener la lógica original
+                same_cluster_neighbors = [node for node in all_neighbors 
+                                          if str(graph.nodes[node]['Cluster']) == current_cluster]
+                
+                if same_cluster_neighbors:
+                    new_node = choice(same_cluster_neighbors)
+                elif all_neighbors:
+                    new_node = choice(all_neighbors)
+                else:
+                    new_node = current_node_id
             
             new_lat = graph.nodes[new_node]['y']
             new_lon = graph.nodes[new_node]['x']
@@ -112,6 +178,7 @@ def simulate_sereno_movement(nodes, serenos, graph):
         else:  # Estado ALERTA
             ruta = serenos.iloc[i]['Ruta']
             if ruta:
+                # Movemos el sereno al siguiente nodo en su ruta hacia la víctima
                 next_node = ruta.pop(0)
                 new_lat = graph.nodes[next_node]['y']
                 new_lon = graph.nodes[next_node]['x']
@@ -120,10 +187,12 @@ def simulate_sereno_movement(nodes, serenos, graph):
                                       serenos.iloc[i]['Forma de patrullaje'], serenos.iloc[i]['Placa'], 
                                       serenos.iloc[i]['Velocidad'], 'ALERTA', ruta, new_cluster])
             else:
+                # Si la ruta está vacía, el sereno ha llegado a la víctima y se queda ahí
                 new_positions.append([serenos.iloc[i]['id'], serenos.iloc[i]['lat'], serenos.iloc[i]['lon'], 
                                       serenos.iloc[i]['Sereno'], serenos.iloc[i]['Turno'], 
                                       serenos.iloc[i]['Forma de patrullaje'], serenos.iloc[i]['Placa'], 
                                       serenos.iloc[i]['Velocidad'], 'ALERTA', [], serenos.iloc[i]['Cluster']])
+
     return pd.DataFrame(new_positions, columns=['id', 'lat', 'lon', 'Sereno', 'Turno', 'Forma de patrullaje', 
                                                 'Placa', 'Velocidad', 'Estado', 'Ruta', 'Cluster'])
 
@@ -136,17 +205,26 @@ def update_positions():
             new_positions_df = simulate_sereno_movement(nodes_df, initial_serenos, G)
             serenos_positions = new_positions_df.to_dict('records')
             
+            # Convertir valores numpy a tipos nativos de Python
             for pos in serenos_positions:
                 for key, value in pos.items():
                     if isinstance(value, np.number):
                         pos[key] = value.item()
                         
             data_ciudadanos = read_data('Ciudadanos')
+            print(data_ciudadanos)
+            
             current_row_count = len(data_ciudadanos)
             
             if current_row_count > last_row_count:
+                print("¡Alerta de Socorro!")
+                
+
                 try:
                     Tabla_Dijkstra = process_alert(data_ciudadanos, serenos_positions, G)
+                    print(Tabla_Dijkstra)
+                    
+                    # Actualizar el estado del sereno con la prioridad más baja
                     sereno_to_alert = Tabla_Dijkstra[Tabla_Dijkstra['Estado'] == 'NORMAL'].iloc[0]
                     for i, sereno in enumerate(serenos_positions):
                         if sereno['Sereno'] == sereno_to_alert['Sereno']:
@@ -154,25 +232,46 @@ def update_positions():
                             serenos_positions[i]['Ruta'] = sereno_to_alert['Ruta']
                             break
                     
+                    # Actualizar las posiciones de las víctimas
                     victimas_positions = data_ciudadanos[['Latitud', 'Longitud']].to_dict('records')
                 except Exception as e:
-                    print(f"Error en process_alert: {e}")
+                    print(f"Error al procesar la alerta: {e}")
             
             last_row_count = current_row_count
+            
             initial_serenos = pd.DataFrame(serenos_positions)
             
+            # Actualizar la hoja de Google Sheets
             sheet = authenticate_google_sheets()
             update_google_sheet(sheet, initial_serenos)
             
             time.sleep(3)
         except Exception as e:
             print(f"Error en update_positions: {e}")
-            time.sleep(3)
+            time.sleep(3)  # Esperar un poco antes de intentar de nuevo
 
 def calculate_nearest_node(lat, lon, G):
+    """
+    Calcula el nodo más cercano a las coordenadas dadas.
+    
+    :param lat: Latitud
+    :param lon: Longitud
+    :param G: Grafo de NetworkX
+    :return: Nodo más cercano
+    """
     nodes = ox.graph_to_gdfs(G, edges=False)
     closest_idx = cdist([(lon, lat)], nodes[['x', 'y']]).argmin()
     return nodes.iloc[closest_idx]
+
+def get_length_by_osmid(G, osmid):
+    for u, v, data in G.edges(data=True):
+        if isinstance(data.get('osmid'), list):
+            if osmid in data['osmid']:
+                return data.get('length')
+        elif data.get('osmid') == osmid:
+            return data.get('length')
+    return None
+
 
 def calculate_distances(G, start_node, end_nodes):
     distances, paths = nx.single_source_dijkstra(G, start_node)
@@ -180,9 +279,17 @@ def calculate_distances(G, start_node, end_nodes):
     for end_node in end_nodes:
         if end_node in paths:
             path = paths[end_node]
-            total_distance = sum(G[path[i]][path[i+1]][0].get('length', 0) for i in range(len(path) - 1))
+            total_distance = 0
+            for i in range(len(path) - 1):
+                edge_data = G.get_edge_data(path[i], path[i+1])
+                if edge_data:
+                    # Sumamos la longitud de cada arista en la ruta
+                    length = edge_data[0].get('length', 0)
+                    total_distance += length
             total_distances[end_node] = total_distance
     return total_distances, paths
+
+
 
 def process_alert(data_ciudadanos, serenos_positions, G):
     victim_data = data_ciudadanos.iloc[-1]
@@ -221,7 +328,13 @@ def process_alert(data_ciudadanos, serenos_positions, G):
     Tabla_Dijkstra = Tabla_Dijkstra.sort_values('Tiempo')
     Tabla_Dijkstra['Prioridad'] = range(1, len(Tabla_Dijkstra) + 1)
     
+    # Guardar la tabla con nombre que incluye fecha y hora
+    now = datetime.now()
+    filename = f"Tabla Dijkstra - {now.strftime('%Y-%m-%d %H-%M-%S')}.xlsx"
+    Tabla_Dijkstra.to_excel(os.path.join('D:', filename))
+    
     return Tabla_Dijkstra
+
 
 def get_heatmap_data():
     df = pd.read_excel('data/Delitos - Serenazgo Pueblo Libre.xlsx')
@@ -237,55 +350,85 @@ class NumpyEncoder(json.JSONEncoder):
             return obj.tolist()
         return super(NumpyEncoder, self).default(obj)
 
+
+
 @app.route('/')
 def index():
+    """Renderiza la página principal."""
     return render_template('index.html')
+
 
 @app.route('/get_positions')
 def get_positions():
+    """Retorna las posiciones actuales de los serenos y víctimas en formato JSON."""
     positions = {
         'serenos': [{k: v.item() if isinstance(v, np.number) else v for k, v in pos.items()} for pos in serenos_positions],
         'victimas': victimas_positions
     }
     return json.dumps(positions, cls=NumpyEncoder)
 
+
 @app.route('/get_heatmap_data')
 def heatmap_data():
     return jsonify(get_heatmap_data())
+
+
+
 def main():
+    """Función principal que inicializa y ejecuta la aplicación."""
     global G, nodes_df, initial_serenos
     
+    
+    # Descargar el grafo de la ciudad
     G = cargar_grafo_pickle('data/Grafo-Pueblo-Libre.gpickle')
     nodes_df = extract_nodes(G)
     
+    # Autenticar y obtener datos de Google Sheets
     sheet = authenticate_google_sheets()
     
+    
+    # Limpiar la hoja 'Ciudadanos', manteniendo los encabezados
     ciudadanos_sheet = authenticate_google_sheets('Ciudadanos')
-    headers = ciudadanos_sheet.row_values(1)
-    ciudadanos_sheet.clear()
-    ciudadanos_sheet.update('A1', [headers])
+    headers = ciudadanos_sheet.row_values(1)  # Obtener los encabezados
+    ciudadanos_sheet.clear()  # Limpiar toda la hoja
+    ciudadanos_sheet.update('A1', [headers])  # Volver a insertar los encabezados
     
     num_serenos = get_serenos_count(sheet)
+    unique_clusters_df = nodes_df.drop_duplicates(subset='Cluster')
+    unique_clusters_df.to_excel('data/valores_unicos_clusters.xlsx', index=False)
+
     
-    data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
+    # Leer datos de los serenos desde un archivo Excel
+    data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx', engine='openpyxl')
     data_serenos_inicial = data_serenos.rename(columns={'Latitud': 'lat', 'Longitud': 'lon'})
     
+    # Seleccionar nodos aleatorios para los serenos iniciales
+    #initial_serenos = select_random_nodes(nodes_df, num_serenos)
     initial_serenos = select_sereno_positions(data_serenos_inicial)
+
     
+    # Añadir información adicional a los serenos
     initial_serenos['Sereno'] = data_serenos['Sereno']
     initial_serenos['Forma de patrullaje'] = data_serenos['Forma de patrullaje']
     initial_serenos['Placa'] = data_serenos['Placa']
     initial_serenos['Turno'] = data_serenos['Turno']
     initial_serenos['Velocidad'] = data_serenos['Velocidad']
-    initial_serenos['Estado'] = 'NORMAL'
-    initial_serenos['Ruta'] = [[] for _ in range(len(initial_serenos))]
-    initial_serenos['Cluster'] = data_serenos['Cluster']
-    
-    update_google_sheet(sheet, initial_serenos)
+    initial_serenos['Estado'] = 'NORMAL'  # Inicializar todos los serenos en estado NORMAL
+    initial_serenos['Ruta'] = [[] for _ in range(len(initial_serenos))]  # Inicializar rutas vacías
+    initial_serenos['Cluster'] = data_serenos['Cluster']  # Asegúrate de que esta línea esté presente
 
+    
+    # Actualizar la hoja de Google Sheets con las posiciones iniciales
+    update_google_sheet(sheet, initial_serenos)
+    print(initial_serenos.columns)
+
+    # Iniciar el hilo de actualización de posiciones
     update_thread = threading.Thread(target=update_positions)
     update_thread.daemon = True
     update_thread.start()
+
+    # Iniciar la aplicación Flask
+    app.run(debug=True, use_reloader=False)
 
 if __name__ == '__main__':
     main()
