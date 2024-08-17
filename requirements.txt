@@ -1,0 +1,16 @@
+gunicorn
+networkx
+osmnx
+gspread
+google-auth
+pandas
+numpy
+folium
+Flask
+pygame
+pyttsx3
+scipy
+scikit-learn
+shapely
+matplotlib
+seaborn
