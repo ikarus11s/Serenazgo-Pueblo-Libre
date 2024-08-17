@@ -457,7 +457,7 @@ def main():
 
     
     # Leer datos de los serenos desde un archivo Excel
-    data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx', engine='openpyxl')
+    data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
     data_serenos_inicial = data_serenos.rename(columns={'Latitud': 'lat', 'Longitud': 'lon'})
     
     # Seleccionar nodos aleatorios para los serenos iniciales
