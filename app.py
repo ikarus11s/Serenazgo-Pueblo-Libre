@@ -387,7 +387,98 @@ def heatmap_data():
     return jsonify(get_heatmap_data())
 
 
+# aqui inidica el codigo de prueba...
+Copy@app.route('/get_functions_info')
+def get_functions_info():
+    functions_info = ""
 
+    # Función read_data
+    functions_info += "read_data\n"
+    sheet = authenticate_google_sheets('Ciudadanos')  # Usando 'Ciudadanos' como ejemplo
+    data = read_data('Ciudadanos')
+    functions_info += str(data.head().to_dict()) + "\n\n\n"
+
+    # Función download_graph
+    functions_info += "download_graph\n"
+    G = download_graph("Pueblo Libre, Lima, Peru")
+    functions_info += f"Número de nodos: {G.number_of_nodes()}, Número de aristas: {G.number_of_edges()}\n\n\n"
+
+    # Función extract_nodes
+    functions_info += "extract_nodes\n"
+    nodes = extract_nodes(G)
+    functions_info += str(nodes.head().to_dict()) + "\n\n\n"
+
+    # Función select_random_nodes
+    functions_info += "select_random_nodes\n"
+    random_nodes = select_random_nodes(nodes, 5)
+    functions_info += str(random_nodes.to_dict()) + "\n\n\n"
+
+    # Función select_sereno_positions
+    functions_info += "select_sereno_positions\n"
+    data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
+    sereno_positions = select_sereno_positions(data_serenos)
+    functions_info += str(sereno_positions.head().to_dict()) + "\n\n\n"
+
+    # Función authenticate_google_sheets
+    functions_info += "authenticate_google_sheets\n"
+    sheet = authenticate_google_sheets()
+    functions_info += f"Título de la hoja: {sheet.title}\n\n\n"
+
+    # Función get_serenos_count
+    functions_info += "get_serenos_count\n"
+    count = get_serenos_count(sheet)
+    functions_info += f"Número de serenos: {count}\n\n\n"
+
+    # Función get_heatmap_data
+    functions_info += "get_heatmap_data\n"
+    heatmap_data = get_heatmap_data()
+    functions_info += str(heatmap_data[:5]) + "\n\n\n"
+
+    return functions_info
+
+@app.route('/get_functions_info_json')
+def get_functions_info_json():
+    functions_info = {}
+
+    # Función read_data
+    sheet = authenticate_google_sheets('Ciudadanos')  # Usando 'Ciudadanos' como ejemplo
+    data = read_data('Ciudadanos')
+    functions_info['read_data'] = data.head().to_dict()
+
+    # Función download_graph
+    G = download_graph("Pueblo Libre, Lima, Peru")
+    functions_info['download_graph'] = {
+        'num_nodes': G.number_of_nodes(),
+        'num_edges': G.number_of_edges()
+    }
+
+    # Función extract_nodes
+    nodes = extract_nodes(G)
+    functions_info['extract_nodes'] = nodes.head().to_dict()
+
+    # Función select_random_nodes
+    random_nodes = select_random_nodes(nodes, 5)
+    functions_info['select_random_nodes'] = random_nodes.to_dict()
+
+    # Función select_sereno_positions
+    data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
+    sereno_positions = select_sereno_positions(data_serenos)
+    functions_info['select_sereno_positions'] = sereno_positions.head().to_dict()
+
+    # Función authenticate_google_sheets
+    sheet = authenticate_google_sheets()
+    functions_info['authenticate_google_sheets'] = {'sheet_title': sheet.title}
+
+    # Función get_serenos_count
+    count = get_serenos_count(sheet)
+    functions_info['get_serenos_count'] = {'count': count}
+
+    # Función get_heatmap_data
+    heatmap_data = get_heatmap_data()
+    functions_info['get_heatmap_data'] = heatmap_data[:5]
+
+    return jsonify(functions_info)
+# aqui termina el codigo de prueba ...
 def main():
     """Función principal que inicializa y ejecuta la aplicación."""
     global G, nodes_df, initial_serenos
