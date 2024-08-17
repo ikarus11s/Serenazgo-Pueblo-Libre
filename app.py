@@ -445,12 +445,8 @@ def get_functions_info_json():
     data = read_data('Ciudadanos')
     functions_info['read_data'] = data.head().to_dict()
 
-    # Función download_graph
-    G = download_graph("Pueblo Libre, Lima, Peru")
-    functions_info['download_graph'] = {
-        'num_nodes': G.number_of_nodes(),
-        'num_edges': G.number_of_edges()
-    }
+    G = cargar_grafo_pickle('data/Grafo-Pueblo-Libre.gpickle')
+
 
     # Función extract_nodes
     nodes = extract_nodes(G)
