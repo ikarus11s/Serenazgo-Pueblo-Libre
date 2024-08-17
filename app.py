@@ -2,7 +2,7 @@
 """
 Created on Sat Aug 17 12:12:18 2024
 
-@author: radio
+@author: Ismael
 """
 
 import networkx as nx
@@ -23,14 +23,13 @@ import json
 import os
 from Utils.MisLibrerias import *
 
+
+
+
 # Define los alcances y el archivo de la cuenta de servicio para Google Sheets
 SCOPES = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+SERVICE_ACCOUNT_FILE = '/etc/secrets/serenazgo-431820-3cf6c177b559.json'
 SPREADSHEET_ID = '1gS6ZS6lS7Mc5B4TFI8HEK80xq4LANS6nU2O8V8-hEC8'
-
-# Cargar las credenciales desde la variable de entorno
-creds_json = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON')
-creds_dict = json.loads(creds_json)
-creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 
 # Inicializa la aplicación Flask
 app = Flask(__name__)
@@ -38,6 +37,7 @@ app = Flask(__name__)
 # Variable global para almacenar las posiciones de los serenos
 serenos_positions = []
 victimas_positions = []
+
 
 
 def read_data(sheet_name):
@@ -82,15 +82,28 @@ def select_random_nodes(nodes, n):
 
 def select_sereno_positions(data_serenos):
     required_columns = ['Sereno', 'Cluster', 'id', 'lat', 'lon', 'Estado']
+    
     for column in required_columns:
         if column not in data_serenos.columns:
             raise KeyError(f"Columna '{column}' no encontrada en el DataFrame.")
+    
     positions = data_serenos[required_columns].copy()
-    return positions.reset_index(drop=True)
+    positions = positions.reset_index(drop=True)
+    
+    return positions
+
 
 def authenticate_google_sheets(sheet_name=None):
+    """
+    Autentica con Google Sheets y devuelve la hoja especificada o la primera hoja si no se indica ninguna.
+    
+    :param sheet_name: Nombre de la hoja a abrir (opcional)
+    :return: Objeto de hoja de Google Sheets
+    """
+    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     client = gspread.authorize(creds)
     spreadsheet = client.open_by_key(SPREADSHEET_ID)
+    
     if sheet_name:
         sheet = spreadsheet.worksheet(sheet_name)
     else:
@@ -399,7 +412,7 @@ def main():
 
     
     # Leer datos de los serenos desde un archivo Excel
-    data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
+    data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx', engine='openpyxl')
     data_serenos_inicial = data_serenos.rename(columns={'Latitud': 'lat', 'Longitud': 'lon'})
     
     # Seleccionar nodos aleatorios para los serenos iniciales
