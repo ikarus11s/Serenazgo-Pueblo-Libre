@@ -2,7 +2,7 @@
 """
 Created on Sat Aug 17 12:12:18 2024
 
-@author: Ismael
+@author: radio
 """
 
 import networkx as nx
@@ -15,7 +15,6 @@ from random import choice
 import time
 from datetime import datetime
 import folium
-
 from flask import Flask, render_template, jsonify
 import threading
 from scipy.spatial.distance import cdist
@@ -29,6 +28,8 @@ from Utils.MisLibrerias import *
 # Define los alcances y el archivo de la cuenta de servicio para Google Sheets
 SCOPES = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 SERVICE_ACCOUNT_FILE = '/etc/secrets/serenazgo-431820-3cf6c177b559.json'
+#SERVICE_ACCOUNT_FILE = 'D:/colab/serenazgo-431820-3cf6c177b559.json'
+
 SPREADSHEET_ID = '1gS6ZS6lS7Mc5B4TFI8HEK80xq4LANS6nU2O8V8-hEC8'
 
 # Inicializa la aplicación Flask
@@ -342,9 +343,9 @@ def process_alert(data_ciudadanos, serenos_positions, G):
     Tabla_Dijkstra['Prioridad'] = range(1, len(Tabla_Dijkstra) + 1)
     
     # Guardar la tabla con nombre que incluye fecha y hora
-    now = datetime.now()
-    filename = f"Tabla Dijkstra - {now.strftime('%Y-%m-%d %H-%M-%S')}.xlsx"
-    Tabla_Dijkstra.to_excel(os.path.join('D:', filename))
+    #now = datetime.now()
+    #filename = f"Tabla Dijkstra - {now.strftime('%Y-%m-%d %H-%M-%S')}.xlsx"
+    #Tabla_Dijkstra.to_excel(os.path.join('D:', filename))
     
     return Tabla_Dijkstra
 
@@ -408,11 +409,11 @@ def main():
     
     num_serenos = get_serenos_count(sheet)
     unique_clusters_df = nodes_df.drop_duplicates(subset='Cluster')
-    unique_clusters_df.to_excel('data/valores_unicos_clusters.xlsx', index=False)
+    #unique_clusters_df.to_excel('data/valores_unicos_clusters.xlsx', index=False)
 
     
     # Leer datos de los serenos desde un archivo Excel
-    data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx', engine='openpyxl')
+    data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
     data_serenos_inicial = data_serenos.rename(columns={'Latitud': 'lat', 'Longitud': 'lon'})
     
     # Seleccionar nodos aleatorios para los serenos iniciales
