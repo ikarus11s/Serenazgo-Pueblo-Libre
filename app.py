@@ -213,7 +213,9 @@ def simulate_sereno_movement(nodes, serenos, graph):
                                       serenos.iloc[i]['Sereno'], serenos.iloc[i]['Turno'], 
                                       serenos.iloc[i]['Forma de patrullaje'], serenos.iloc[i]['Placa'], 
                                       serenos.iloc[i]['Velocidad'], 'ALERTA', [], serenos.iloc[i]['Cluster']])
-
+    print("simulate")
+    print(pd.DataFrame(new_positions, columns=['id', 'lat', 'lon', 'Sereno', 'Turno', 'Forma de patrullaje', 
+                                                'Placa', 'Velocidad', 'Estado', 'Ruta', 'Cluster']))
     return pd.DataFrame(new_positions, columns=['id', 'lat', 'lon', 'Sereno', 'Turno', 'Forma de patrullaje', 
                                                 'Placa', 'Velocidad', 'Estado', 'Ruta', 'Cluster'])
 
@@ -299,6 +301,8 @@ def update_positions():
             last_row_count = current_row_count
             
             initial_serenos = pd.DataFrame(serenos_positions)
+            print("inittial serenos")
+            print(initial_serenos)
             
             # Actualizar la hoja de Google Sheets
             sheet = authenticate_google_sheets()
@@ -440,6 +444,7 @@ def main():
     # Descargar el grafo de la ciudad
     G = cargar_grafo_pickle('data/Grafo-Pueblo-Libre.gpickle')
     nodes_df = extract_nodes(G)
+    for element in nodes_df.nodes(data = True): print(element)
     
     # Autenticar y obtener datos de Google Sheets
     sheet = authenticate_google_sheets()
@@ -454,11 +459,14 @@ def main():
     num_serenos = get_serenos_count(sheet)
     unique_clusters_df = nodes_df.drop_duplicates(subset='Cluster')
     unique_clusters_df.to_excel('data/valores_unicos_clusters.xlsx', index=False)
+    print(unique_clusters_df)
 
     
     # Leer datos de los serenos desde un archivo Excel
     data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
+    print(data_serenos)
     data_serenos_inicial = data_serenos.rename(columns={'Latitud': 'lat', 'Longitud': 'lon'})
+    print(data_serenos_inicial)
     
     # Seleccionar nodos aleatorios para los serenos iniciales
     #initial_serenos = select_random_nodes(nodes_df, num_serenos)
