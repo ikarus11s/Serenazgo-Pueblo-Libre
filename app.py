@@ -354,6 +354,94 @@ def get_heatmap_data():
     df = pd.read_excel('data/Delitos - Serenazgo Pueblo Libre.xlsx')
     return df[['Latitud', 'Longitud']].values.tolist()
 
+
+def verify_main_execution():
+    results = {}
+
+    # Verificar la carga del grafo
+    try:
+        G = cargar_grafo_pickle('data/Grafo-Pueblo-Libre.gpickle')
+        results['cargar_grafo_pickle'] = f"Éxito. Nodos: {G.number_of_nodes()}, Aristas: {G.number_of_edges()}"
+    except Exception as e:
+        results['cargar_grafo_pickle'] = f"Error: {str(e)}"
+
+    # Verificar la extracción de nodos
+    try:
+        nodes_df = extract_nodes(G)
+        results['extract_nodes'] = f"Éxito. Filas: {len(nodes_df)}, Columnas: {', '.join(nodes_df.columns)}"
+    except Exception as e:
+        results['extract_nodes'] = f"Error: {str(e)}"
+
+    # Verificar la autenticación de Google Sheets
+    try:
+        sheet = authenticate_google_sheets()
+        results['authenticate_google_sheets'] = f"Éxito. Hoja: {sheet.title}"
+    except Exception as e:
+        results['authenticate_google_sheets'] = f"Error: {str(e)}"
+
+    # Verificar la limpieza de la hoja 'Ciudadanos'
+    try:
+        ciudadanos_sheet = authenticate_google_sheets('Ciudadanos')
+        headers = ciudadanos_sheet.row_values(1)
+        ciudadanos_sheet.clear()
+        ciudadanos_sheet.update('A1', [headers])
+        results['clean_ciudadanos_sheet'] = f"Éxito. Encabezados: {', '.join(headers)}"
+    except Exception as e:
+        results['clean_ciudadanos_sheet'] = f"Error: {str(e)}"
+
+    # Verificar el conteo de serenos
+    try:
+        num_serenos = get_serenos_count(sheet)
+        results['get_serenos_count'] = f"Éxito. Número de serenos: {num_serenos}"
+    except Exception as e:
+        results['get_serenos_count'] = f"Error: {str(e)}"
+
+    # Verificar la obtención de clusters únicos
+    try:
+        unique_clusters_df = nodes_df.drop_duplicates(subset='Cluster')
+        results['unique_clusters'] = f"Éxito. Clusters únicos: {len(unique_clusters_df)}"
+    except Exception as e:
+        results['unique_clusters'] = f"Error: {str(e)}"
+
+    # Verificar la lectura de datos de serenos
+    try:
+        data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
+        data_serenos_inicial = data_serenos.rename(columns={'Latitud': 'lat', 'Longitud': 'lon'})
+        results['read_serenos_data'] = f"Éxito. Filas: {len(data_serenos)}, Columnas: {', '.join(data_serenos.columns)}"
+    except Exception as e:
+        results['read_serenos_data'] = f"Error: {str(e)}"
+
+    # Verificar la selección de posiciones de serenos
+    try:
+        initial_serenos = select_sereno_positions(data_serenos_inicial)
+        results['select_sereno_positions'] = f"Éxito. Serenos seleccionados: {len(initial_serenos)}"
+    except Exception as e:
+        results['select_sereno_positions'] = f"Error: {str(e)}"
+
+    # Verificar la adición de información adicional a los serenos
+    try:
+        initial_serenos['Sereno'] = data_serenos['Sereno']
+        initial_serenos['Forma de patrullaje'] = data_serenos['Forma de patrullaje']
+        initial_serenos['Placa'] = data_serenos['Placa']
+        initial_serenos['Turno'] = data_serenos['Turno']
+        initial_serenos['Velocidad'] = data_serenos['Velocidad']
+        initial_serenos['Estado'] = 'NORMAL'
+        initial_serenos['Ruta'] = [[] for _ in range(len(initial_serenos))]
+        initial_serenos['Cluster'] = data_serenos['Cluster']
+        results['add_serenos_info'] = f"Éxito. Columnas añadidas: {', '.join(initial_serenos.columns)}"
+    except Exception as e:
+        results['add_serenos_info'] = f"Error: {str(e)}"
+
+    # Verificar la actualización de la hoja de Google Sheets
+    try:
+        update_google_sheet(sheet, initial_serenos)
+        results['update_google_sheet'] = "Éxito. Hoja actualizada con datos iniciales de serenos."
+    except Exception as e:
+        results['update_google_sheet'] = f"Error: {str(e)}"
+
+    return results
+    
+
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -428,6 +516,14 @@ def get_functions_info_json():
     functions_info['serenos'] = data_serenos_inicial.head().to_dict()
 
     return jsonify(functions_info)
+
+
+
+
+@app.route('/verify_main')
+def verify_main():
+    results = verify_main_execution()
+    return jsonify(results)
 # aqui termina el codigo de prueba ...
 
 
