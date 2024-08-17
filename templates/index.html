@@ -226,36 +226,56 @@
             });
         }
 
+        function handleErrors(response) {
+            if (!response.ok) {
+                throw Error(response.statusText);
+            }
+            return response;
+        }
+
+
+        
+
         function updatePositions() {
-            fetch('/get_positions')
-                .then(response => response.json())
-                .then(data => {
-                    data.serenos.forEach(sereno => {
-                        var icon = getIcon(sereno['Forma de patrullaje'], sereno.Estado);
-                        if (markers[sereno.Sereno]) {
-                            markers[sereno.Sereno].setLatLng([sereno.lat, sereno.lon]).setIcon(icon);
-                        } else {
-                            markers[sereno.Sereno] = L.marker([sereno.lat, sereno.lon], { icon: icon }).addTo(map);
-                        }
+                  fetch('/get_positions')
+            .then(handleErrors)
+            .then(response => response.json())
+            .then(data => {
+            data.serenos.forEach(sereno => {
+                var icon = getIcon(sereno['Forma de patrullaje'], sereno.Estado);
+                if (markers[sereno.Sereno]) {
+                    markers[sereno.Sereno].setLatLng([sereno.lat, sereno.lon]).setIcon(icon);
+                } else {
+                    markers[sereno.Sereno] = L.marker([sereno.lat, sereno.lon], { icon: icon }).addTo(map);
+                }
+                
+                var popupContent = `
+                Sereno: ${sereno.Sereno}<br>
+                Forma de patrullaje: ${sereno['Forma de patrullaje']}<br>
+                Estado: ${sereno.Estado}<br>
+                Velocidad: ${sereno.Velocidad} km/h
+            `;
+                markers[sereno.Sereno].bindPopup(popupContent);
+
+                if (sereno.Estado === 'ALERTA') {
+                    if (sereno.Ruta && sereno.Ruta.length > 0) {
+                        var routeCoordinates = sereno.Ruta.map(nodeId => {
+                            var node = data.nodes.find(n => n.id === nodeId);
+                            return node ? [node.lat, node.lon] : null;
+                        }).filter(coord => coord !== null);
                         
-                        var popupContent = `Sereno: ${sereno.Sereno}<br>Forma de patrullaje: ${sereno['Forma de patrullaje']}`;
-                        markers[sereno.Sereno].bindPopup(popupContent);
-
-                        if (sereno.Estado === 'ALERTA') {
-                            if (sereno.Ruta && sereno.Ruta.length > 0) {
-                                var routeCoordinates = sereno.Ruta.map(node => [node.lat, node.lon]);
-                                if (sereneRoutes[sereno.Sereno]) {
-                                    sereneRoutes[sereno.Sereno].setLatLngs(routeCoordinates);
-                                } else {
-                                    sereneRoutes[sereno.Sereno] = L.polyline(routeCoordinates, {color: '#FF00FF', weight: 3}).addTo(map);
-                                }
-                            }
-                        } else if (sereneRoutes[sereno.Sereno]) {
-                            map.removeLayer(sereneRoutes[sereno.Sereno]);
-                            delete sereneRoutes[sereno.Sereno];
+                        if (sereneRoutes[sereno.Sereno]) {
+                            sereneRoutes[sereno.Sereno].setLatLngs(routeCoordinates);
+                        } else {
+                            sereneRoutes[sereno.Sereno] = L.polyline(routeCoordinates, {color: '#FF00FF', weight: 3}).addTo(map);
                         }
-                    });
-
+                    }
+                } else if (sereneRoutes[sereno.Sereno]) {
+                    map.removeLayer(sereneRoutes[sereno.Sereno]);
+                    delete sereneRoutes[sereno.Sereno];
+                }
+                })
+    .catch(error => console.log('Hubo un problema con la petición fetch:', error));
                     data.victimas.forEach((victima, index) => {
                         var icon = getVictimIcon();
                         if (victimMarkers[index]) {
