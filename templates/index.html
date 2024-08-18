@@ -166,7 +166,20 @@
             <h3>Ventana de Depuración</h3>
             <pre id="debug-content"></pre>
         </div>
+    <div class="container-fluid">
+        <!-- Ventana de depuración -->
+        <div id="debug-window" class="debug-box mb-4">
+            <h3>Ventana de Depuración</h3>
+            <h4>serenos_positions:</h4>
+            <pre id="serenos-positions"></pre>
+            <h4>Resultado de get_positions():</h4>
+            <pre id="get-positions-result"></pre>
+        </div>
 
+        <h1 class="text-center">Serenazgo: Pueblo Libre</h1>
+        
+        <!-- Resto del contenido HTML ... -->
+    </div>
         <h1 class="text-center">Serenazgo: Pueblo Libre</h1>
         
         <!-- Resto del contenido HTML ... -->
@@ -375,7 +388,8 @@ function updateMarkers() {
             fetch('/get_debug_info')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('debug-content').textContent = JSON.stringify(data, null, 2);
+                    document.getElementById('serenos-positions').textContent = JSON.stringify(data.serenos_positions, null, 2);
+                    document.getElementById('get-positions-result').textContent = JSON.stringify(data.get_positions_result, null, 2);
                 });
         }
 
