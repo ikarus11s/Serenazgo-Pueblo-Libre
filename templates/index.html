@@ -337,13 +337,37 @@ function updateMainVerification() {
         });
 }
         
+function updateMarkers() {
+    $.getJSON('/get_positions', function(data) {
+        // Limpiar marcadores existentes
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.Marker) {
+                map.removeLayer(layer);
+            }
+        });
 
+        // Añadir nuevos marcadores para serenos
+        data.serenos.forEach(function(sereno) {
+            L.marker([sereno.lat, sereno.lon]).addTo(map)
+                .bindPopup('Sereno: ' + sereno.Sereno);
+        });
+
+        // Añadir nuevos marcadores para víctimas
+        data.victimas.forEach(function(victima) {
+            L.marker([victima.Latitud, victima.Longitud]).addTo(map)
+                .bindPopup('Víctima');
+        });
+    });
+}
 
 
         
         createHeatmap();
         setInterval(updatePositions, 3000);
         setInterval(updateMainVerification, 60000);  // Actualiza cada minuto
+        setInterval(updateMarkers, 5000);
+
+
     </script>
 </body>
 </html>
