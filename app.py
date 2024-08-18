@@ -614,6 +614,9 @@ def main():
     debug_print("Autenticación con Google Sheets completada")
 
     debug_print("Inicializando la aplicación Flask...")
+    debug_print("Serenos positions:", serenos_positions)
+    debug_print("Victimas positions:", victimas_positions)
+    
 
     #borra hasta aqui
 
