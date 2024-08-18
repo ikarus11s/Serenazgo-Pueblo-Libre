@@ -528,12 +528,6 @@ def verify_main():
 
 
 
-@app.route('/get_debug_info')
-def get_debug_info():
-    global debug_messages
-    return jsonify(debug_messages)
-
-
 @app.route('/get_positions')
 def get_positions():
     """Retorna las posiciones actuales de los serenos y víctimas en formato JSON."""
