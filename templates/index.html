@@ -370,7 +370,6 @@ function updateMarkers() {
     });
 }
 
-    <script>
         // Función para actualizar la ventana de depuración
         function updateDebugWindow() {
             fetch('/get_debug_info')
@@ -382,7 +381,6 @@ function updateMarkers() {
 
         // Llamar a la función cada 5 segundos
         setInterval(updateDebugWindow, 5000);
-    </script>
         
         createHeatmap();
         setInterval(updatePositions, 3000);
