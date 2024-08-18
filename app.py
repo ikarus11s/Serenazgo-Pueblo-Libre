@@ -469,17 +469,6 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/get_positions')
-def get_positions():
-    """Retorna las posiciones actuales de los serenos y víctimas en formato JSON."""
-    positions = {
-        'serenos': [{k: v.item() if isinstance(v, np.number) else v for k, v in pos.items()} for pos in serenos_positions],
-        'victimas': victimas_positions
-    }
-    print("Serenos positions:", serenos_positions)
-    print("Victimas positions:", victimas_positions)
-    return json.dumps(positions, cls=NumpyEncoder)
-
 
 @app.route('/get_heatmap_data')
 def heatmap_data():
