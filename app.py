@@ -545,6 +545,26 @@ def get_debug_info():
     return jsonify(debug_messages)
 
 
+@app.route('/get_positions')
+def get_positions():
+    """Retorna las posiciones actuales de los serenos y víctimas en formato JSON."""
+    global serenos_positions, victimas_positions
+    positions = {
+        'serenos': [{k: v.item() if isinstance(v, np.number) else v for k, v in pos.items()} for pos in serenos_positions],
+        'victimas': victimas_positions
+    }
+    debug_print("Serenos positions:", serenos_positions)
+    debug_print("Victimas positions:", victimas_positions)
+    return json.dumps(positions, cls=NumpyEncoder)
+
+@app.route('/get_debug_info')
+def get_debug_info():
+    global serenos_positions, victimas_positions
+    debug_info = {
+        'serenos_positions': serenos_positions,
+        'get_positions_result': json.loads(get_positions())
+    }
+    return jsonify(debug_info)
 
 def main():
     """Función principal que inicializa y ejecuta la aplicación."""
