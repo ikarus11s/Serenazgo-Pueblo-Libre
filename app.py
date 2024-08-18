@@ -213,6 +213,8 @@ def simulate_sereno_movement(nodes, serenos, graph):
 def update_positions():
     global serenos_positions, victimas_positions, G, nodes_df, initial_serenos, last_row_count
     last_row_count = 0
+    new_positions_df = simulate_sereno_movement(nodes_df, initial_serenos, G)
+    serenos_positions = new_positions_df.to_dict('records')
 
     while True:
         try:
@@ -467,6 +469,8 @@ def get_positions():
         'serenos': [{k: v.item() if isinstance(v, np.number) else v for k, v in pos.items()} for pos in serenos_positions],
         'victimas': victimas_positions
     }
+    print("Serenos positions:", serenos_positions)
+    print("Victimas positions:", victimas_positions)
     return json.dumps(positions, cls=NumpyEncoder)
 
 
@@ -586,4 +590,4 @@ def main():
 if __name__ == '__main__':
     main()
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=True)
