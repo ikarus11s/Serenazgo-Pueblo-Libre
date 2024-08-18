@@ -160,7 +160,17 @@
     <div id="mainVerification" class="info-box"></div>
 </div>
 
+    <div class="container-fluid">
+        <!-- Ventana de depuración -->
+        <div id="debug-window" class="debug-box mb-4">
+            <h3>Ventana de Depuración</h3>
+            <pre id="debug-content"></pre>
+        </div>
 
+        <h1 class="text-center">Serenazgo: Pueblo Libre</h1>
+        
+        <!-- Resto del contenido HTML ... -->
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         var heatmapLayer;
@@ -360,7 +370,19 @@ function updateMarkers() {
     });
 }
 
+    <script>
+        // Función para actualizar la ventana de depuración
+        function updateDebugWindow() {
+            fetch('/get_debug_info')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('debug-content').textContent = JSON.stringify(data, null, 2);
+                });
+        }
 
+        // Llamar a la función cada 5 segundos
+        setInterval(updateDebugWindow, 5000);
+    </script>
         
         createHeatmap();
         setInterval(updatePositions, 3000);
