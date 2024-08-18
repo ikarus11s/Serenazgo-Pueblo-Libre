@@ -599,8 +599,8 @@ def main():
     update_thread.daemon = True
     update_thread.start()
 
-#borra esta parte
-debug_print("Iniciando la aplicación...")
+    #borra esta parte
+    debug_print("Iniciando la aplicación...")
     
     # Descargar el grafo de la ciudad
     G = cargar_grafo_pickle('data/Grafo-Pueblo-Libre.gpickle')
@@ -615,7 +615,7 @@ debug_print("Iniciando la aplicación...")
 
     debug_print("Inicializando la aplicación Flask...")
 
-#borra hasta aqui
+    #borra hasta aqui
 
     
     # Iniciar la aplicación Flask
