@@ -40,8 +40,6 @@ serenos_positions = []
 victimas_positions = []
 
 
-# Lista global para almacenar mensajes de depuración
-debug_messages = []
 
 def read_data(sheet_name):
     sheet = authenticate_google_sheets(sheet_name)
@@ -444,12 +442,7 @@ def verify_main_execution():
         results['update_google_sheet'] = f"Error: {str(e)}"
 
     return results
- 
-def debug_print(*args, **kwargs):
-    message = " ".join(map(str, args))
-    debug_messages.append(message)
-    print(message, **kwargs)  # Esto seguirá imprimiendo en la consola
-   
+    
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -468,6 +461,17 @@ def index():
     """Renderiza la página principal."""
     return render_template('index.html')
 
+
+@app.route('/get_positions')
+def get_positions():
+    """Retorna las posiciones actuales de los serenos y víctimas en formato JSON."""
+    positions = {
+        'serenos': [{k: v.item() if isinstance(v, np.number) else v for k, v in pos.items()} for pos in serenos_positions],
+        'victimas': victimas_positions
+    }
+    print("Serenos positions:", serenos_positions)
+    print("Victimas positions:", victimas_positions)
+    return json.dumps(positions, cls=NumpyEncoder)
 
 
 @app.route('/get_heatmap_data')
@@ -527,28 +531,6 @@ def verify_main():
 # aqui termina el codigo de prueba ...
 
 
-
-@app.route('/get_positions')
-def get_positions():
-    """Retorna las posiciones actuales de los serenos y víctimas en formato JSON."""
-    global serenos_positions, victimas_positions
-    positions = {
-        'serenos': [{k: v.item() if isinstance(v, np.number) else v for k, v in pos.items()} for pos in serenos_positions],
-        'victimas': victimas_positions
-    }
-    debug_print("Serenos positions:", serenos_positions)
-    debug_print("Victimas positions:", victimas_positions)
-    return json.dumps(positions, cls=NumpyEncoder)
-
-@app.route('/get_debug_info')
-def get_debug_info():
-    global serenos_positions, victimas_positions
-    debug_info = {
-        'serenos_positions': serenos_positions,
-        'get_positions_result': json.loads(get_positions())
-    }
-    return jsonify(debug_info)
-
 def main():
     """Función principal que inicializa y ejecuta la aplicación."""
     global G, nodes_df, initial_serenos
@@ -602,28 +584,6 @@ def main():
     update_thread.daemon = True
     update_thread.start()
 
-    #borra esta parte
-    debug_print("Iniciando la aplicación...")
-    
-    # Descargar el grafo de la ciudad
-    G = cargar_grafo_pickle('data/Grafo-Pueblo-Libre.gpickle')
-    debug_print(f"Grafo cargado: {G.number_of_nodes()} nodos, {G.number_of_edges()} aristas")
-    
-    nodes_df = extract_nodes(G)
-    debug_print(f"Nodos extraídos: {len(nodes_df)}")
-    
-    # Autenticar y obtener datos de Google Sheets
-    sheet = authenticate_google_sheets()
-    debug_print("Autenticación con Google Sheets completada")
-
-    debug_print("Inicializando la aplicación Flask...")
-    debug_print("Serenos positions:", serenos_positions)
-    debug_print("Victimas positions:", victimas_positions)
-    
-
-    #borra hasta aqui
-
-    
     # Iniciar la aplicación Flask
     app.run(debug=True, use_reloader=False)
 
