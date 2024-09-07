@@ -213,8 +213,6 @@ def simulate_sereno_movement(nodes, serenos, graph):
 def update_positions():
     global serenos_positions, victimas_positions, G, nodes_df, initial_serenos, last_row_count
     last_row_count = 0
-    new_positions_df = simulate_sereno_movement(nodes_df, initial_serenos, G)
-    serenos_positions = new_positions_df.to_dict('records')
 
     while True:
         try:
@@ -356,94 +354,6 @@ def get_heatmap_data():
     df = pd.read_excel('data/Delitos - Serenazgo Pueblo Libre.xlsx')
     return df[['Latitud', 'Longitud']].values.tolist()
 
-
-def verify_main_execution():
-    results = {}
-
-    # Verificar la carga del grafo
-    try:
-        G = cargar_grafo_pickle('data/Grafo-Pueblo-Libre.gpickle')
-        results['cargar_grafo_pickle'] = f"Éxito. Nodos: {G.number_of_nodes()}, Aristas: {G.number_of_edges()}"
-    except Exception as e:
-        results['cargar_grafo_pickle'] = f"Error: {str(e)}"
-
-    # Verificar la extracción de nodos
-    try:
-        nodes_df = extract_nodes(G)
-        results['extract_nodes'] = f"Éxito. Filas: {len(nodes_df)}, Columnas: {', '.join(nodes_df.columns)}"
-    except Exception as e:
-        results['extract_nodes'] = f"Error: {str(e)}"
-
-    # Verificar la autenticación de Google Sheets
-    try:
-        sheet = authenticate_google_sheets()
-        results['authenticate_google_sheets'] = f"Éxito. Hoja: {sheet.title}"
-    except Exception as e:
-        results['authenticate_google_sheets'] = f"Error: {str(e)}"
-
-    # Verificar la limpieza de la hoja 'Ciudadanos'
-    try:
-        ciudadanos_sheet = authenticate_google_sheets('Ciudadanos')
-        headers = ciudadanos_sheet.row_values(1)
-        ciudadanos_sheet.clear()
-        ciudadanos_sheet.update('A1', [headers])
-        results['clean_ciudadanos_sheet'] = f"Éxito. Encabezados: {', '.join(headers)}"
-    except Exception as e:
-        results['clean_ciudadanos_sheet'] = f"Error: {str(e)}"
-
-    # Verificar el conteo de serenos
-    try:
-        num_serenos = get_serenos_count(sheet)
-        results['get_serenos_count'] = f"Éxito. Número de serenos: {num_serenos}"
-    except Exception as e:
-        results['get_serenos_count'] = f"Error: {str(e)}"
-
-    # Verificar la obtención de clusters únicos
-    try:
-        unique_clusters_df = nodes_df.drop_duplicates(subset='Cluster')
-        results['unique_clusters'] = f"Éxito. Clusters únicos: {len(unique_clusters_df)}"
-    except Exception as e:
-        results['unique_clusters'] = f"Error: {str(e)}"
-
-    # Verificar la lectura de datos de serenos
-    try:
-        data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
-        data_serenos_inicial = data_serenos.rename(columns={'Latitud': 'lat', 'Longitud': 'lon'})
-        results['read_serenos_data'] = f"Éxito. Filas: {len(data_serenos)}, Columnas: {', '.join(data_serenos.columns)}"
-    except Exception as e:
-        results['read_serenos_data'] = f"Error: {str(e)}"
-
-    # Verificar la selección de posiciones de serenos
-    try:
-        initial_serenos = select_sereno_positions(data_serenos_inicial)
-        results['select_sereno_positions'] = f"Éxito. Serenos seleccionados: {len(initial_serenos)}"
-    except Exception as e:
-        results['select_sereno_positions'] = f"Error: {str(e)}"
-
-    # Verificar la adición de información adicional a los serenos
-    try:
-        initial_serenos['Sereno'] = data_serenos['Sereno']
-        initial_serenos['Forma de patrullaje'] = data_serenos['Forma de patrullaje']
-        initial_serenos['Placa'] = data_serenos['Placa']
-        initial_serenos['Turno'] = data_serenos['Turno']
-        initial_serenos['Velocidad'] = data_serenos['Velocidad']
-        initial_serenos['Estado'] = 'NORMAL'
-        initial_serenos['Ruta'] = [[] for _ in range(len(initial_serenos))]
-        initial_serenos['Cluster'] = data_serenos['Cluster']
-        results['add_serenos_info'] = f"Éxito. Columnas añadidas: {', '.join(initial_serenos.columns)}"
-    except Exception as e:
-        results['add_serenos_info'] = f"Error: {str(e)}"
-
-    # Verificar la actualización de la hoja de Google Sheets
-    try:
-        update_google_sheet(sheet, initial_serenos)
-        results['update_google_sheet'] = "Éxito. Hoja actualizada con datos iniciales de serenos."
-    except Exception as e:
-        results['update_google_sheet'] = f"Error: {str(e)}"
-
-    return results
-    
-
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -469,8 +379,6 @@ def get_positions():
         'serenos': [{k: v.item() if isinstance(v, np.number) else v for k, v in pos.items()} for pos in serenos_positions],
         'victimas': victimas_positions
     }
-    print("Serenos positions:", serenos_positions)
-    print("Victimas positions:", victimas_positions)
     return json.dumps(positions, cls=NumpyEncoder)
 
 
@@ -484,18 +392,47 @@ def heatmap_data():
 def get_functions_info():
     functions_info = ""
 
-    # Cargar el grafo
-    G = cargar_grafo_pickle('data/Grafo-Pueblo-Libre.gpickle')
-    functions_info += f"Grafo cargado: {G.number_of_nodes()} nodos, {G.number_of_edges()} aristas\n\n"
+    # Función read_data
+    functions_info += "read_data\n"
+    sheet = authenticate_google_sheets('Ciudadanos')  # Usando 'Ciudadanos' como ejemplo
+    data = read_data('Ciudadanos')
+    functions_info += str(data.head().to_dict()) + "\n\n\n"
 
-    # Extraer nodos
-    nodes_df = extract_nodes(G)
-    functions_info += f"Nodos extraídos (primeros 5):\n{nodes_df.head().to_string()}\n\n"
+    # Función download_graph
+    functions_info += "download_graph\n"
+    G = download_graph("Pueblo Libre, Lima, Peru")
+    functions_info += f"Número de nodos: {G.number_of_nodes()}, Número de aristas: {G.number_of_edges()}\n\n\n"
 
-    # Leer datos de los serenos
+    # Función extract_nodes
+    functions_info += "extract_nodes\n"
+    nodes = extract_nodes(G)
+    functions_info += str(nodes.head().to_dict()) + "\n\n\n"
+
+    # Función select_random_nodes
+    functions_info += "select_random_nodes\n"
+    random_nodes = select_random_nodes(nodes, 5)
+    functions_info += str(random_nodes.to_dict()) + "\n\n\n"
+
+    # Función select_sereno_positions
+    functions_info += "select_sereno_positions\n"
     data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
-    data_serenos_inicial = data_serenos.rename(columns={'Latitud': 'lat', 'Longitud': 'lon'})
-    functions_info += f"Datos de serenos (primeros 5):\n{data_serenos_inicial.head().to_string()}\n\n"
+    sereno_positions = select_sereno_positions(data_serenos)
+    functions_info += str(sereno_positions.head().to_dict()) + "\n\n\n"
+
+    # Función authenticate_google_sheets
+    functions_info += "authenticate_google_sheets\n"
+    sheet = authenticate_google_sheets()
+    functions_info += f"Título de la hoja: {sheet.title}\n\n\n"
+
+    # Función get_serenos_count
+    functions_info += "get_serenos_count\n"
+    count = get_serenos_count(sheet)
+    functions_info += f"Número de serenos: {count}\n\n\n"
+
+    # Función get_heatmap_data
+    functions_info += "get_heatmap_data\n"
+    heatmap_data = get_heatmap_data()
+    functions_info += str(heatmap_data[:5]) + "\n\n\n"
 
     return functions_info
 
@@ -503,34 +440,45 @@ def get_functions_info():
 def get_functions_info_json():
     functions_info = {}
 
-    # Cargar el grafo
-    G = cargar_grafo_pickle('data/Grafo-Pueblo-Libre.gpickle')
-    functions_info['grafo'] = {
+    # Función read_data
+    sheet = authenticate_google_sheets('Ciudadanos')  # Usando 'Ciudadanos' como ejemplo
+    data = read_data('Ciudadanos')
+    functions_info['read_data'] = data.head().to_dict()
+
+    # Función download_graph
+    G = download_graph("Pueblo Libre, Lima, Peru")
+    functions_info['download_graph'] = {
         'num_nodes': G.number_of_nodes(),
         'num_edges': G.number_of_edges()
     }
 
-    # Extraer nodos
-    nodes_df = extract_nodes(G)
-    functions_info['nodos'] = nodes_df.head().to_dict()
+    # Función extract_nodes
+    nodes = extract_nodes(G)
+    functions_info['extract_nodes'] = nodes.head().to_dict()
 
-    # Leer datos de los serenos
+    # Función select_random_nodes
+    random_nodes = select_random_nodes(nodes, 5)
+    functions_info['select_random_nodes'] = random_nodes.to_dict()
+
+    # Función select_sereno_positions
     data_serenos = pd.read_excel('data/Serenazgo Pueblo Libre.xlsx')
-    data_serenos_inicial = data_serenos.rename(columns={'Latitud': 'lat', 'Longitud': 'lon'})
-    functions_info['serenos'] = data_serenos_inicial.head().to_dict()
+    sereno_positions = select_sereno_positions(data_serenos)
+    functions_info['select_sereno_positions'] = sereno_positions.head().to_dict()
+
+    # Función authenticate_google_sheets
+    sheet = authenticate_google_sheets()
+    functions_info['authenticate_google_sheets'] = {'sheet_title': sheet.title}
+
+    # Función get_serenos_count
+    count = get_serenos_count(sheet)
+    functions_info['get_serenos_count'] = {'count': count}
+
+    # Función get_heatmap_data
+    heatmap_data = get_heatmap_data()
+    functions_info['get_heatmap_data'] = heatmap_data[:5]
 
     return jsonify(functions_info)
-
-
-
-
-@app.route('/verify_main')
-def verify_main():
-    results = verify_main_execution()
-    return jsonify(results)
 # aqui termina el codigo de prueba ...
-
-
 def main():
     """Función principal que inicializa y ejecuta la aplicación."""
     global G, nodes_df, initial_serenos
@@ -590,4 +538,4 @@ def main():
 if __name__ == '__main__':
     main()
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port)
