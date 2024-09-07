@@ -155,11 +155,6 @@
     <div id="functionsInfo" class="info-box"></div>
     </div>
 
-    <div class="mt-4">
-    <h2>Verificación de la Ejecución Principal</h2>
-    <div id="mainVerification" class="info-box"></div>
-</div>
-
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -324,50 +319,14 @@ function updateFunctionsInfo() {
 }
 
         
-function updateMainVerification() {
-    fetch('/verify_main')
-        .then(response => response.json())
-        .then(data => {
-            let content = '<ul>';
-            for (const [key, value] of Object.entries(data)) {
-                content += `<li><strong>${key}:</strong> ${value}</li>`;
-            }
-            content += '</ul>';
-            document.getElementById('mainVerification').innerHTML = content;
-        });
-}
+
         
-function updateMarkers() {
-    $.getJSON('/get_positions', function(data) {
-        // Limpiar marcadores existentes
-        map.eachLayer(function(layer) {
-            if (layer instanceof L.Marker) {
-                map.removeLayer(layer);
-            }
-        });
 
-        // Añadir nuevos marcadores para serenos
-        data.serenos.forEach(function(sereno) {
-            L.marker([sereno.lat, sereno.lon]).addTo(map)
-                .bindPopup('Sereno: ' + sereno.Sereno);
-        });
-
-        // Añadir nuevos marcadores para víctimas
-        data.victimas.forEach(function(victima) {
-            L.marker([victima.Latitud, victima.Longitud]).addTo(map)
-                .bindPopup('Víctima');
-        });
-    });
-}
 
 
         
         createHeatmap();
         setInterval(updatePositions, 3000);
-        setInterval(updateMainVerification, 60000);  // Actualiza cada minuto
-        setInterval(updateMarkers, 5000);
-
-
     </script>
 </body>
 </html>
