@@ -533,9 +533,9 @@ def main():
     update_thread.start()
 
     # Iniciar la aplicación Flask
-    app.run(debug=True, use_reloader=False)
+    #app.run(debug=True, use_reloader=False)
 
 if __name__ == '__main__':
     main()
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
