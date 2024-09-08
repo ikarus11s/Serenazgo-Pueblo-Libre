@@ -388,7 +388,7 @@ def heatmap_data():
 
 
 # aqui inidica el codigo de prueba...
-Copy@app.route('/get_functions_info')
+@app.route('/get_functions_info')
 def get_functions_info():
     functions_info = ""
 
