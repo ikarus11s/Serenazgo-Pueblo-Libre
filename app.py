@@ -27,7 +27,7 @@ from Utils.MisLibrerias import *
 
 # Define los alcances y el archivo de la cuenta de servicio para Google Sheets
 SCOPES = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-SERVICE_ACCOUNT_FILE = '/etc/secrets/serenazgo-431820-3cf6c177b559.json'
+#SERVICE_ACCOUNT_FILE = '/etc/secrets/serenazgo-431820-3cf6c177b559.json'
 #SERVICE_ACCOUNT_FILE = 'D:/colab/serenazgo-431820-3cf6c177b559.json'
 
 SPREADSHEET_ID = '1gS6ZS6lS7Mc5B4TFI8HEK80xq4LANS6nU2O8V8-hEC8'
@@ -93,7 +93,6 @@ def select_sereno_positions(data_serenos):
     
     return positions
 
-
 def authenticate_google_sheets(sheet_name=None):
     """
     Autentica con Google Sheets y devuelve la hoja especificada o la primera hoja si no se indica ninguna.
@@ -101,7 +100,18 @@ def authenticate_google_sheets(sheet_name=None):
     :param sheet_name: Nombre de la hoja a abrir (opcional)
     :return: Objeto de hoja de Google Sheets
     """
-    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    # Obtén las credenciales de la variable de entorno
+    credentials_json = os.environ.get('GOOGLE_SHEETS_CREDENTIALS')
+    
+    if not credentials_json:
+        raise ValueError("Las credenciales de Google Sheets no están configuradas en las variables de entorno.")
+    
+    # Convierte la cadena JSON en un diccionario
+    credentials_info = json.loads(credentials_json)
+    
+    # Crea las credenciales a partir del diccionario
+    creds = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
+    
     client = gspread.authorize(creds)
     spreadsheet = client.open_by_key(SPREADSHEET_ID)
     
