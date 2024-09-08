@@ -148,14 +148,6 @@
         </div>
     </div>
 
-    // este div- borrar esto...
-
-    <div class="container-fluid mt-4">
-    <h2>Información de Funciones</h2>
-    <div id="functionsInfo" class="info-box"></div>
-    </div>
-
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         var heatmapLayer;
@@ -306,25 +298,6 @@
                 });
         }
 
-
-
-
-// Agregar esta función al final del script existente - borrar esto...
-function updateFunctionsInfo() {
-    fetch('/get_functions_info')
-        .then(response => response.text())
-        .then(data => {
-            document.getElementById('functionsInfo').innerHTML = '<pre>' + data + '</pre>';
-        });
-}
-
-        
-
-        
-
-
-
-        
         createHeatmap();
         setInterval(updatePositions, 3000);
     </script>
