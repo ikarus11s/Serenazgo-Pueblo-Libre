@@ -26,11 +26,29 @@ from Utils.MisLibrerias import *
 
 
 # Define los alcances y el archivo de la cuenta de servicio para Google Sheets
-SCOPES = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+#SCOPES = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 #SERVICE_ACCOUNT_FILE = '/etc/secrets/serenazgo-431820-3cf6c177b559.json'
 #SERVICE_ACCOUNT_FILE = 'D:/colab/serenazgo-431820-3cf6c177b559.json'
 
+#SPREADSHEET_ID = '1gS6ZS6lS7Mc5B4TFI8HEK80xq4LANS6nU2O8V8-hEC8'
+
+
+
+# Define los alcances y el archivo de la cuenta de servicio para Google Sheets
+SCOPES = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+
+# Obtén el secreto de Google API desde las variables de entorno
+GOOGLE_API_KEY = os.environ.get('GOOGLE_SHEETS_CREDENTIALS')
+
+# Guarda las credenciales en un archivo temporal
+with open('/tmp/service_account.json', 'w') as f:
+    f.write(GOOGLE_API_KEY)
+
+SERVICE_ACCOUNT_FILE = '/tmp/service_account.json'
+
 SPREADSHEET_ID = '1gS6ZS6lS7Mc5B4TFI8HEK80xq4LANS6nU2O8V8-hEC8'
+
+
 
 # Inicializa la aplicación Flask
 app = Flask(__name__)
@@ -100,18 +118,7 @@ def authenticate_google_sheets(sheet_name=None):
     :param sheet_name: Nombre de la hoja a abrir (opcional)
     :return: Objeto de hoja de Google Sheets
     """
-    # Obtén las credenciales de la variable de entorno
-    credentials_json = os.environ.get('GOOGLE_SHEETS_CREDENTIALS')
-    
-    if not credentials_json:
-        raise ValueError("Las credenciales de Google Sheets no están configuradas en las variables de entorno.")
-    
-    # Convierte la cadena JSON en un diccionario
-    credentials_info = json.loads(credentials_json)
-    
-    # Crea las credenciales a partir del diccionario
-    creds = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
-    
+    creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
     client = gspread.authorize(creds)
     spreadsheet = client.open_by_key(SPREADSHEET_ID)
     
